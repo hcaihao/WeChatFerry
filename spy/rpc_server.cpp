@@ -163,6 +163,28 @@ bool func_get_db_tables(char *db, uint8_t *out, size_t *len)
     return true;
 }
 
+bool func_get_user_info(uint8_t *out, size_t *len)
+{
+    Response rsp  = Response_init_default;
+    rsp.func      = Functions_FUNC_GET_USER_INFO;
+    rsp.which_msg = Response_ui_tag;
+
+    UserInfo_t ui     = GetUserInfo();
+    rsp.msg.ui.wxid   = (char *)ui.wxid.c_str();
+    rsp.msg.ui.name   = (char *)ui.name.c_str();
+    rsp.msg.ui.mobile = (char *)ui.mobile.c_str();
+    rsp.msg.ui.home   = (char *)ui.home.c_str();
+
+    pb_ostream_t stream = pb_ostream_from_buffer(out, *len);
+    if (!pb_encode(&stream, Response_fields, &rsp)) {
+        LOG_ERROR("Encoding failed: {}", PB_GET_ERROR(&stream));
+        return false;
+    }
+    *len = stream.bytes_written;
+
+    return true;
+}
+
 bool func_send_txt(TextMsg txt, uint8_t *out, size_t *len)
 {
     Response rsp   = Response_init_default;
@@ -330,7 +352,7 @@ static void PushMessage()
                 rsp.msg.wxmsg.sender   = (char *)wxmsg.sender.c_str();
                 rsp.msg.wxmsg.roomid   = (char *)wxmsg.roomid.c_str();
                 rsp.msg.wxmsg.content  = (char *)wxmsg.content.c_str();
-                rsp.msg.wxmsg.thumb = (char*)wxmsg.thumb.c_str();
+                rsp.msg.wxmsg.thumb    = (char *)wxmsg.thumb.c_str();
                 rsp.msg.wxmsg.extra    = (char *)wxmsg.extra.c_str();
                 gMsgQueue.pop();
                 LOG_DEBUG("Recv msg: {}", wxmsg.content);
@@ -504,6 +526,11 @@ static bool dispatcher(uint8_t *in, size_t in_len, uint8_t *out, size_t *out_len
         case Functions_FUNC_GET_DB_TABLES: {
             LOG_DEBUG("[Functions_FUNC_GET_DB_TABLES]");
             ret = func_get_db_tables(req.msg.str, out, out_len);
+            break;
+        }
+        case Functions_FUNC_GET_USER_INFO: {
+            LOG_DEBUG("[Functions_FUNC_GET_USER_INFO]");
+            ret = func_get_user_info(out, out_len);
             break;
         }
         case Functions_FUNC_SEND_TXT: {
